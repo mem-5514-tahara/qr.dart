@@ -22,9 +22,9 @@ void main() {
 
     // Clean up the temporary directory after all tests in this group have run.
     tearDown(() {
-      // if (testOutputDir.existsSync()) {
-      //   testOutputDir.deleteSync(recursive: true);
-      // }
+      if (testOutputDir.existsSync()) {
+        testOutputDir.deleteSync(recursive: true);
+      }
     });
 
     test('should export a basic QR code to PNG bytes', () {
