@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:charset/charset.dart';
 import 'package:meta/meta.dart';
 
 import 'bit_buffer.dart';
@@ -34,15 +35,24 @@ class QrCode {
     required int errorCorrectLevel,
   }) {
     final List<QrDatum> dataList;
-    // Automatically determine mode here
-    if (RegExp(r'^[0-9]+$').hasMatch(data)) {
-      // Numeric mode for numbers only
+
+    final hasOnlyAscii = data.codeUnits.every((c) => c <= 127);
+
+    // 1. Shift-JIS Mode
+    // If the input string contains only Shift-JIS characters, use QrKanji.
+    if (!hasOnlyAscii && Charset.canEncode(const ShiftJISCodec(), data)) {
+      dataList = [QrKanji(data)];
+    }
+    // 2. Numeric Mode
+    else if (RegExp(r'^[0-9]+$').hasMatch(data)) {
       dataList = [QrNumeric.fromString(data)];
-    } else if (RegExp(r'^[0-9A-Z $%*+\-./:]+$').hasMatch(data)) {
-      // Alphanumeric mode for alphanumeric characters only
+    }
+    // 3. Alphanumeric Mode
+    else if (RegExp(r'^[0-9A-Z $%*+\-./:]+$').hasMatch(data)) {
       dataList = [QrAlphaNumeric.fromString(data)];
-    } else {
-      // Default to byte mode for other characters
+    }
+    // 4. Byte Mode (Fallback for all other characters)
+    else {
       dataList = [QrByte(data)];
     }
 

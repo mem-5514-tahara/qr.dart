@@ -129,18 +129,29 @@ void main() {
 
     // Byte Mode
     test(
-        'should use Byte Mode for non-alphanumeric characters and select the smallest version',
+        'should use Byte Mode for non-alphanumeric and non-kanji characters and select the smallest version',
         () {
-      // Kanji characters are encoded in UTF-8 Byte Mode because Kanji Mode is not implemented.
-      // '機械学習' (4 characters) is 12 bytes in UTF-8.
-      // According to the `_rsBlockTable`, the data capacity for version 2 (H level) is 16 bytes,
-      // so 12 bytes fit.
-      // Therefore, the library should correctly choose version 2.
+      // The Euro symbol '€€' is encoded in UTF-8 Byte Mode.
+      // '€€' is 6 bytes in UTF-8. This fits in version 1 (H level), which has a usable data capacity of 7 bytes.
+      final qr = QrCode.fromData(
+        data: '€€',
+        errorCorrectLevel: QrErrorCorrectLevel.H,
+      );
+      expect(qr.typeNumber, 1);
+    });
+
+    // Kanji Mode
+    test(
+        'should use Kanji Mode for Japanese characters and select the smallest version',
+        () {
+      // '機械学習' is 4 characters, encoded in Shift-JIS as 8 bytes.
+      // Kanji Mode for version 1 (H level) has a capacity of 8 characters (16 bytes),
+      // so 4 characters fit.
       final qr = QrCode.fromData(
         data: '機械学習',
         errorCorrectLevel: QrErrorCorrectLevel.H,
       );
-      expect(qr.typeNumber, 2);
+      expect(qr.typeNumber, 1);
     });
   });
 }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:charset/charset.dart'; // Import for Shift-JIS encoding
 import 'bit_buffer.dart';
 import 'mode.dart' as qr_mode;
 
@@ -131,4 +132,56 @@ class QrAlphaNumeric implements QrDatum {
   // This is still the *number of characters to encode*, not encoded length.
   @override
   int get length => _string.length;
+}
+
+/// Encodes Kanji characters in Shift-JIS format.
+class QrKanji implements QrDatum {
+  @override
+  final int mode = qr_mode.modeKanji;
+  final Uint8List _data;
+
+  factory QrKanji(String input) {
+    final sjisEncoder = shiftJis.encoder;
+    try {
+      final sjisBytes = sjisEncoder.convert(input);
+      if (sjisBytes.length % 2 != 0) {
+        throw ArgumentError(
+            'Input string length must be an even number of bytes for Kanji Mode');
+      }
+      return QrKanji._(Uint8List.fromList(sjisBytes));
+    } catch (e) {
+      throw ArgumentError('Unsupported Kanji character or encoding error: $e');
+    }
+  }
+
+  QrKanji._(this._data);
+
+  @override
+  int get length => _data.length ~/ 2;
+
+  @override
+  void write(QrBitBuffer buffer) {
+    for (var i = 0; i < _data.length; i += 2) {
+      // Combine two Shift-JIS bytes into a single integer.
+      final code = (_data[i] << 8) | _data[i + 1];
+
+      int encoded;
+      if (0x8140 <= code && code <= 0x9FFC) {
+        // JISX0208 range
+        encoded = code - 0x8140;
+        if (encoded >= 0x40) {
+          encoded--;
+        }
+      } else if (0xE040 <= code && code <= 0xEBBF) {
+        // Shift-JIS extended range
+        encoded = code - 0xC140;
+      } else {
+        throw ArgumentError(
+            'Unsupported Kanji character: ${code.toRadixString(16)}');
+      }
+
+      // Encode into 13 bits.
+      buffer.put(encoded, 13);
+    }
+  }
 }
