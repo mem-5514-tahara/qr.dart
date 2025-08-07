@@ -2,6 +2,7 @@
 
 import 'dart:typed_data';
 
+import 'package:qr/qr.dart';
 import 'package:qr/src/error_correct_level.dart';
 import 'package:qr/src/qr_code.dart';
 import 'package:qr/src/qr_image.dart';
@@ -101,6 +102,41 @@ void main() {
         );
       },
       throwsA(isA<AssertionError>()),
+    );
+  });
+
+  test('''
+      should generate a QrCode with version 40
+      for data slightly exceeding version 39 capacity
+      ''', () {
+    // The maximum byte count for version 39 (L) is 2951.
+    // Intentionally create 2952 bytes of data and verify
+    // that it becomes version 40.
+    final largeData = 'A' * 2952;
+
+    final qrCode = QrCode.fromData(
+      data: largeData,
+      errorCorrectLevel: QrErrorCorrectLevel.L,
+    );
+
+    expect(qrCode.typeNumber, 40);
+  });
+
+  test('''
+      should throw InputTooLongException 
+      for data exceeding version 40 capacity
+      ''', () {
+    // Prepare data exceeding the maximum byte count (2953)
+    // for version 40 (error correction level L).
+    final excessivelyLargeData = 'A' * 2954;
+
+    // An exception should be thrown for data exceeding the capacity
+    expect(
+      () => QrCode.fromData(
+        data: excessivelyLargeData,
+        errorCorrectLevel: QrErrorCorrectLevel.L,
+      ),
+      throwsA(isA<InputTooLongException>()),
     );
   });
 }

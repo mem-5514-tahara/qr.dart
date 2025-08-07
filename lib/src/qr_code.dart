@@ -57,7 +57,7 @@ class QrCode {
     List<QrDatum> dataList,
   ) {
     int typeNumber;
-    for (typeNumber = 1; typeNumber < 40; typeNumber++) {
+    for (typeNumber = 1; typeNumber <= 40; typeNumber++) {
       final rsBlocks = QrRsBlock.getRSBlocks(typeNumber, errorCorrectLevel);
 
       final buffer = QrBitBuffer();
@@ -74,6 +74,29 @@ class QrCode {
         data.write(buffer);
       }
       if (buffer.length <= totalDataCount * 8) break;
+    }
+
+    if (typeNumber > 40) {
+      // If we reach here, it means the data is too long for any QR Code version.
+      final buffer = QrBitBuffer();
+      for (var i = 0; i < dataList.length; i++) {
+        final data = dataList[i];
+        buffer
+          ..put(data.mode, 4)
+          ..put(data.length, _lengthInBits(data.mode, 40));
+        data.write(buffer);
+      }
+      final providedInputBits = buffer.length;
+
+      // Calculate the maximum data capacity for version 40 with the given error correction level.
+      final rsBlocks = QrRsBlock.getRSBlocks(40, errorCorrectLevel);
+      var totalDataCount = 0;
+      for (var i = 0; i < rsBlocks.length; i++) {
+        totalDataCount += rsBlocks[i].dataCount;
+      }
+      final inputLimitBits = totalDataCount * 8;
+
+      throw InputTooLongException(providedInputBits, inputLimitBits);
     }
     return typeNumber;
   }
